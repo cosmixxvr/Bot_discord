@@ -1,12 +1,27 @@
 import discord
 from discord.ext import commands
 from bot_logic import gen_pass
+import random
+import json
+import os
 
 intents = discord.Intents.default()
 intents.message_content = True
 intents.reactions = True
 
 bot = commands.Bot(command_prefix='$', intents=intents)
+
+def cargar_puntos():
+    if os.path.exists('puntos.json'):
+        with open('puntos.json', 'r') as f:
+            return json.load(f)
+    return {}
+
+def guardar_puntos(puntos):
+    with open('puntos.json', 'w') as f:
+        json.dump(puntos, f, indent=4)
+
+puntos_usuarios = cargar_puntos()
 
 @bot.event
 async def on_ready():
@@ -37,6 +52,63 @@ async def password(ctx):
 @bot.command(name='bot')
 async def _bot(ctx):
     await ctx.send('yo que? quieres pelea? ')
+
+@bot.command()
+async def puntos(ctx):
+    user_id = str(ctx.author.id)
+    puntos_usuario = puntos_usuarios.get(user_id, 0)
+    
+    embed = discord.Embed(
+        title="\U0001f4b0 Banco de Puntos",
+        description=f"{ctx.author.mention}, aquí están tus puntos:",
+        color=discord.Color.gold()
+    )
+    
+    embed.add_field(
+        name="\u2b50 Puntos Totales",
+        value=f"**{puntos_usuario}** puntos",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="\U0001f4a1 ¿Cómo ganar puntos?",
+        value="Juega $reciclaje y acierta para ganar 5 puntos por respuesta correcta",
+        inline=False
+    )
+    
+    embed.set_footer(text="¡Sigue reciclando para ganar más puntos!")
+    
+    await ctx.send(embed=embed)
+
+@bot.command()
+async def ranking(ctx):
+    if not puntos_usuarios:
+        await ctx.send("¡Aún no hay jugadores en el ranking! Usa $reciclaje para empezar a ganar puntos.")
+        return
+    
+    ranking_ordenado = sorted(puntos_usuarios.items(), key=lambda x: x[1], reverse=True)[:10]
+    
+    embed = discord.Embed(
+        title="\U0001f3c6 Ranking de Recicladores",
+        description="¡Los mejores recicladores del servidor!",
+        color=discord.Color.gold()
+    )
+    
+    medallas = ["\U0001f947", "\U0001f948", "\U0001f949"]
+    
+    for i, (user_id, puntos) in enumerate(ranking_ordenado):
+        try:
+            user = await bot.fetch_user(int(user_id))
+            medalla = medallas[i] if i < 3 else f"{i+1}."
+            embed.add_field(
+                name=f"{medalla} {user.name}",
+                value=f"{puntos} puntos",
+                inline=False
+            )
+        except:
+            continue
+    
+    await ctx.send(embed=embed)
 
 @bot.command()
 async def menu(ctx):
@@ -73,6 +145,30 @@ async def menu(ctx):
     embed.add_field(
         name="\U0001f3ae $recomendar",
         value="Recomienda juegos según el género que elijas (FPS, Battle Royale, Survival, Ritmo)",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="\U0001f602 $meme",
+        value="El bot envía 3 memes divertidos",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="\u267b\ufe0f $reciclaje",
+        value="Mini juego interactivo: ¡Aprende a reciclar y gana 5 puntos por respuesta correcta!",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="\U0001f4b0 $puntos",
+        value="Consulta tus puntos acumulados",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="\U0001f3c6 $ranking",
+        value="Mira el ranking de los mejores recicladores",
         inline=False
     )
     
@@ -212,5 +308,152 @@ async def recomendar(ctx):
         
     except:
         await ctx.send("\u23f1\ufe0f Se acabó el tiempo. Usa el comando de nuevo si quieres una recomendación.")
+
+@bot.command()
+async def meme(ctx):
+    with open('images/meme1.jpg', 'rb') as f:
+        picture = discord.File(f)
+    await ctx.send(file=picture)
+    
+    with open('images/meme2.jpg', 'rb') as f:
+        picture = discord.File(f)
+    await ctx.send(file=picture)
+    
+    with open('images/meme3.jpg', 'rb') as f:
+        picture = discord.File(f)
+    await ctx.send(file=picture)
+
+@bot.command()
+async def reciclaje(ctx):
+    datos_reciclaje = {
+        'imag1.jpg': {
+            'tipo': 'Botella de Plástico',
+            'contenedor_correcto': '\U0001f7e1',
+            'nombre_contenedor': 'Amarillo',
+            'dato': 'El plástico puede tardar hasta 1000 años en descomponerse. ¡Reciclar una botella ahorra energía para una bombilla durante 3 horas!'
+        },
+        'imag2.jpg': {
+            'tipo': 'Periódico y Papel',
+            'contenedor_correcto': '\U0001f535',
+            'nombre_contenedor': 'Azul',
+            'dato': 'Reciclar una tonelada de papel salva 17 árboles y ahorra 26,000 litros de agua.'
+        },
+        'imag3.jpg': {
+            'tipo': 'Botella de Vidrio',
+            'contenedor_correcto': '\U0001f7e2',
+            'nombre_contenedor': 'Verde',
+            'dato': 'El vidrio es 100% reciclable y puede reciclarse infinitas veces sin perder calidad.'
+        },
+        'imag4.jpg': {
+            'tipo': 'Restos de Comida',
+            'contenedor_correcto': '\U0001f7e4',
+            'nombre_contenedor': 'Marrón',
+            'dato': 'Los residuos orgánicos se convierten en compost, un fertilizante natural que enriquece la tierra.'
+        },
+        'imag5.jpg': {
+            'tipo': 'Lata de Aluminio',
+            'contenedor_correcto': '\U0001f7e1',
+            'nombre_contenedor': 'Amarillo',
+            'dato': 'Reciclar aluminio ahorra un 95% de energía. ¡Una lata reciclada ahorra energía para ver TV durante 3 horas!'
+        },
+        'imag6.jpg': {
+            'tipo': 'Teléfono Móvil Viejo',
+            'contenedor_correcto': '\u26a1',
+            'nombre_contenedor': 'Punto Limpio',
+            'dato': 'Los electrónicos contienen oro, plata y cobre. ¡Reciclarlos evita contaminar el suelo y el agua!'
+        }
+    }
+    
+    imagen_random = random.choice(list(datos_reciclaje.keys()))
+    info = datos_reciclaje[imagen_random]
+    
+    contenedores = {
+        '\U0001f7e1': 'Amarillo (Plástico y Metal)',
+        '\U0001f535': 'Azul (Papel y Cartón)',
+        '\U0001f7e2': 'Verde (Vidrio)',
+        '\U0001f7e4': 'Marrón (Orgánico)',
+        '\u26a1': 'Punto Limpio (Electrónicos)'
+    }
+    
+    embed = discord.Embed(
+        title="\u267b\ufe0f \U0001f30d ¡Juego de Reciclaje!",
+        description=f"**¿En qué contenedor va este material?**\n\n\U0001f5d1\ufe0f **{info['tipo']}**",
+        color=discord.Color.blue()
+    )
+    
+    embed.add_field(
+        name="\U0001f447 Selecciona el contenedor correcto:",
+        value="\U0001f7e1 Amarillo\n\U0001f535 Azul\n\U0001f7e2 Verde\n\U0001f7e4 Marrón\n\u26a1 Punto Limpio",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="\u2b50 Recompensa",
+        value="¡Gana 5 puntos si aciertas!",
+        inline=False
+    )
+    
+    try:
+        with open(f'images/reciclaje/{imagen_random}', 'rb') as f:
+            picture = discord.File(f)
+        mensaje = await ctx.send(embed=embed, file=picture)
+    except FileNotFoundError:
+        mensaje = await ctx.send(embed=embed)
+    
+    for emoji in contenedores.keys():
+        await mensaje.add_reaction(emoji)
+    
+    def check(reaction, user):
+        return user == ctx.author and str(reaction.emoji) in contenedores.keys() and reaction.message.id == mensaje.id
+    
+    try:
+        reaction, user = await bot.wait_for('reaction_add', timeout=30.0, check=check)
+        
+        user_id = str(ctx.author.id)
+        
+        if str(reaction.emoji) == info['contenedor_correcto']:
+            if user_id not in puntos_usuarios:
+                puntos_usuarios[user_id] = 0
+            
+            puntos_usuarios[user_id] += 5
+            guardar_puntos(puntos_usuarios)
+            
+            embed_resultado = discord.Embed(
+                title="\u2705 ¡Correcto! ¡Bien hecho!",
+                description=f"**{info['tipo']}** va en el contenedor **{info['nombre_contenedor']}** {info['contenedor_correcto']}",
+                color=discord.Color.green()
+            )
+            embed_resultado.add_field(
+                name="\U0001f4a1 ¿Sabías que...?",
+                value=info['dato'],
+                inline=False
+            )
+            embed_resultado.add_field(
+                name="\u2b50 ¡+5 puntos!",
+                value=f"Ahora tienes **{puntos_usuarios[user_id]}** puntos totales",
+                inline=False
+            )
+        else:
+            embed_resultado = discord.Embed(
+                title="\u274c ¡Incorrecto!",
+                description=f"**{info['tipo']}** va en el contenedor **{info['nombre_contenedor']}** {info['contenedor_correcto']}, no en {contenedores[str(reaction.emoji)]}",
+                color=discord.Color.red()
+            )
+            embed_resultado.add_field(
+                name="\U0001f4a1 Dato importante:",
+                value=info['dato'],
+                inline=False
+            )
+            embed_resultado.add_field(
+                name="\U0001f4ad No te preocupes",
+                value="¡Inténtalo de nuevo para ganar puntos!",
+                inline=False
+            )
+        
+        embed_resultado.set_footer(text="Usa $reciclaje para jugar de nuevo | Usa $puntos para ver tu saldo")
+        await ctx.send(embed=embed_resultado)
+        
+    except:
+        await ctx.send("\u23f1\ufe0f Se acabó el tiempo. ¡Usa $reciclaje para intentarlo de nuevo!")
 
 bot.run("MTQ2NjU5NjUzNDkwNzk2MTQ0Nw.GrxtEw.84iZ0kM9SDpuwsD2bSXI3_26Sfixy5rL8DrxW8")
